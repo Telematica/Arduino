@@ -2,7 +2,7 @@
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include "src/WiFiCredentials.h"
+#include "src/secrets/WiFiCredentials.h"
 
 // Credenciales de la red Wi-Fi
 const char* ssid = SSID;

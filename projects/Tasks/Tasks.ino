@@ -2,16 +2,12 @@
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include "src/WiFiCredentials.h"
+#include "src/secrets/WiFiCredentials.h"
 
 #define DHTPIN 5
 #define DHTTYPE DHT11
 #define LED1 LED_BUILTIN
 #define LED2 16
-
-// Wi-Fi credentials
-const char* ssid = SSID;
-const char* password = WIFI_PASSWORD;
 
 // HIVEMQ MQTT Broker credentials
 const char* mqtt_broker = "broker.hivemq.com";
@@ -21,7 +17,7 @@ const int mqtt_port = 1883;
 
 // Task timers and intervals
 unsigned long previousMillis1 = 0;
-unsigned long interval1 = 200;  // Task 1 interval (e.g., 200 milliseconds)
+unsigned long interval1 = 100;  // Task 1 interval (e.g., 200 milliseconds)
 
 unsigned long previousMillis2 = 0;
 unsigned long interval2 = 5000;  // Task 2 interval (e.g., 5000 milliseconds)
@@ -54,7 +50,7 @@ void setup() {
   Serial.begin(115200);
   dht.begin();
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(SSID, WIFI_PASSWORD);
   Serial.printf("\n");
   Serial.printf("Conectando a Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
