@@ -15,7 +15,7 @@
 #define NTP_SERVER "pool.ntp.org"
 #define GMT_OFFSET_SEC -21600
 #define DAYLIGHT_OFFSET_SEC 0
-#define MIN_INTERVAL 60000
+#define REQUEST_INTERVAL 60000
 
 // Task timers and intervals
 unsigned long previousMillis1 = 0;
@@ -37,6 +37,10 @@ String temperature;
 String humidity;
 String timeStr;
 String publicIP;
+String startupTimeStr;
+
+// Flags
+bool firstRun = true;
 
 // DHT Temperature and Humidity Sensor setup
 DHT dht(DHTPIN, DHTTYPE);
@@ -59,7 +63,7 @@ void blink(unsigned long currentMillis) {
   // --- Task 2 ---
   currentMillis = millis();  // Get the current time again (or use the previous one)
 
-  if (currentMillis - previousMillis2 >= interval1) {
+  if (currentMillis - previousMillis2 >= interval1 + 500) {
     previousMillis2 = currentMillis;
 
     // Toggle the state of LED 2
@@ -69,6 +73,32 @@ void blink(unsigned long currentMillis) {
       digitalWrite(LED2, LOW);
     }
   }
+}
+
+String getFormattedLocalDateTime() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time");
+    return "(Error)";
+  }
+  char timeString[25]; // Buffer to hold formatted string
+  // Format: "YYYY-MM-DD HH:MM:SS"
+  strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  // Serial.println(timeString);
+  return timeString;
+}
+
+String getUptime() {
+  unsigned long uptimeSeconds = millis() / 1000;
+  unsigned long days = uptimeSeconds / 86400;
+  unsigned long hours = (uptimeSeconds % 86400) / 3600;
+  unsigned long minutes = (uptimeSeconds % 3600) / 60;
+  unsigned long seconds = uptimeSeconds % 60;
+
+  char uptimeString[20];
+  sprintf(uptimeString, "%01lu days, %02lu:%02lu:%02lu", days, hours, minutes, seconds);
+  Serial.println(uptimeString);
+  return uptimeString;
 }
 
 void getLT() {
@@ -142,7 +172,7 @@ void getPublicIP() {
 }
 
 void telegramRequest(unsigned long currentMillis) {
-  if (currentMillis - previousMillis3 >= MIN_INTERVAL) {
+  if (firstRun || (currentMillis - previousMillis3 >= REQUEST_INTERVAL)) {
     previousMillis3 = currentMillis;
     if (WiFi.status() == WL_CONNECTED) {
       std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
@@ -151,8 +181,14 @@ void telegramRequest(unsigned long currentMillis) {
       getLT();
       getPublicIP();
       readSensors();
-      String rawData = "Alive Date: ";
+      String rawData = "Startup Datetime: ";
+      rawData += startupTimeStr;
+      rawData += "\n\n";
+      rawData += "Last Heartbeat Datetime: ";
       rawData += timeStr;
+      rawData += "\n\n";
+      rawData += "Uptime: ";
+      rawData += getUptime();
       rawData += "\n\n";
       rawData += "Public IP: ";
       rawData += publicIP;
@@ -197,6 +233,7 @@ void telegramRequest(unsigned long currentMillis) {
         https.end();
       }
     }
+    firstRun = false;
   }
 }
 
@@ -219,6 +256,7 @@ void setup() {
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  startupTimeStr = getFormattedLocalDateTime();
 }
 
 void loop() {
