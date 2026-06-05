@@ -15,6 +15,7 @@
 
 ### Arduino Forum
 
+- https://forum.arduino.cc/t/fun-with-async-and-promises-esp8266/610291
 - https://forum.arduino.cc/t/how-to-program-parallel-action-using-arduino-uno/629867/3
 - https://forum.arduino.cc/t/the-src-folder-in-libraries/1424441/3
 - https://forum.arduino.cc/t/accessing-the-current-date/1364965
