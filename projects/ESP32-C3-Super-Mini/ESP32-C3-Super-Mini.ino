@@ -1,3 +1,9 @@
+/*!
+ * @file ESP32-C3-Super-Mini.ino
+ * @author @Telematica
+ * @brief ESP32 C3 Super Mini project with NTP for time synchronization.
+ *
+ */
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -14,21 +20,16 @@
 
 // #define ARDUINO_USB_CDC_ON_BOOT 1
 // #define ARDUINO_USB_MODE 1
-#define I2C_SDA 5 // SDA (Data) GPIO 5
-#define I2C_SCL 6 // SCL / SCK (Clock) GPIO6
-// #define BUTTON_PIN 10 // GPIO10 D10
-// #define BUZZER_PIN 4 // GPIO4
-#define LED LED_BUILTIN // BLUE_LED
-// #define REQUEST_INTERVAL 60000
+#define I2C_SDA 5        // GPIO5 / SDA (Data)
+#define I2C_SCL 6        // GPIO5 / SCL / SCK (Clock)
+#define LED LED_BUILTIN  // GPI08 BLUE_LED
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 #define OLED_RESET -1    // Reset pin # (or -1 if sharing Arduino reset pin)
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-
-// WiFiClient wifiClient; // WiFi Client for HTTP requests
-WiFiClientSecure client;
-HTTPClient http;
+// WiFiClientSecure client; // WiFi Client for HTTP requests
+// HTTPClient https;
 
 // [BEGIN lopaka generated]
 static const unsigned char PROGMEM image_clock_quarters_bits[] = {0x07, 0xc0, 0x19, 0x30, 0x21, 0x08, 0x40, 0x04, 0x41, 0x04, 0x81, 0x02, 0x81, 0x02, 0xe1, 0x0e, 0x80, 0x82, 0x80, 0x42, 0x40, 0x04, 0x40, 0x04, 0x21, 0x08, 0x19, 0x30, 0x07, 0xc0, 0x00, 0x00};
@@ -40,17 +41,17 @@ static const unsigned char PROGMEM image_wifi_25_bits[] = {0x01, 0xf0, 0x00, 0x0
 static const unsigned char PROGMEM image_wifi_2_bits[] = {0x01, 0xf0, 0x00, 0x06, 0x0c, 0x00, 0x18, 0x03, 0x00, 0x21, 0xf0, 0x80, 0x46, 0x0c, 0x40, 0x88, 0x02, 0x20, 0x10, 0xe1, 0x00, 0x23, 0x18, 0x80, 0x04, 0x04, 0x00, 0x08, 0x42, 0x00, 0x01, 0xb0, 0x00, 0x02, 0x08, 0x00, 0x00, 0x40, 0x00, 0x00, 0xa0, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00};
 static const unsigned char PROGMEM image_wifi_not_connected_bits[] = {0x21, 0xf0, 0x00, 0x16, 0x0c, 0x00, 0x08, 0x03, 0x00, 0x25, 0xf0, 0x80, 0x42, 0x0c, 0x40, 0x89, 0x02, 0x20, 0x10, 0xa1, 0x00, 0x23, 0x58, 0x80, 0x04, 0x24, 0x00, 0x08, 0x52, 0x00, 0x01, 0xa8, 0x00, 0x02, 0x04, 0x00, 0x00, 0x42, 0x00, 0x00, 0xa1, 0x00, 0x00, 0x40, 0x80, 0x00, 0x00, 0x00};
 
+// Internal Constants
+static const byte INTERVAL_100MS = 100;
+static const unsigned int INTERVAL_5000MS = 5000;
+
 // Task timers and intervals
 unsigned long previousMillis1 = 0;
-unsigned long interval1 = 100; // Task 1 interval (e.g., 200 milliseconds)
 unsigned long previousMillis2 = 0;
-unsigned long interval2 = 2000; // Task 2 interval (e.g., 5000 milliseconds)
 unsigned long previousMillis3 = 0;
-unsigned long previousMillis4 = 0;
-unsigned long interval3 = 5000; // Task 2 interval (e.g., 5000 milliseconds)
 
 // Counters
-int currentScreen = 0; // 0: Time, 1: SSID/RSSI, 2: Uptime, 3: Public IP and Local IP
+unsigned int currentScreen = 0; // 0: Time, 1: SSID/RSSI, 2: Uptime, 3: Public IP and Local IP
 
 // HTTP Server credentials
 String localIP;
@@ -61,7 +62,7 @@ String timeStr;
 String startupTimeStr;
 
 // Flags
-// bool firstRun = true;
+bool firstRun = true;
 // bool isScreenOff = false;
 // bool lightsOff = false;
 // bool enableSerialOutput = true;
@@ -77,7 +78,7 @@ void blink(unsigned long currentMillis)
 {
   // String currentHour = timeStr.substring(11, 13);
   currentMillis = millis(); // Get the current time again (or use the previous one)
-  if (currentMillis - previousMillis2 >= interval1 + 500)
+  if (currentMillis - previousMillis2 >= INTERVAL_100MS + 500)
   {
     previousMillis2 = currentMillis;
 
@@ -146,30 +147,74 @@ void printMemoryUsage()
   Serial.println(esp_get_minimum_free_heap_size()); // Requires #include <esp_system.h>
 }
 
-void getPublicIP()
+void getPublicIP(unsigned long currentMillis)
 {
+  if (currentMillis - previousMillis3 >= INTERVAL_100MS + 1900)
+  {
+    previousMillis3 = currentMillis;
+  } else {
+    return;
+  }
   if (WiFi.status() == WL_CONNECTED)
   {
-    // std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    // Use this to skip certificate validation
-    // client->setInsecure();
-    // HTTPClient https;
-    if (http.begin(client, AWS_CHECK_IP_URL))
+    // 1. Create instances for secure client and HTTP handler
+    WiFiClientSecure client;
+    HTTPClient https;
+
+    // configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    
+    // 2. Assign the Root CA certificate to validate the server
+    client.setCACert(rootCACertificateCheckIPAmazon);
+
+    // Note: For quick testing without certificate validation, uncomment below:
+    // client.setInsecure();
+
+    Serial.println("\nStarting secure HTTP request...");
+    https.setReuse(false);
+    https.addHeader("User-Agent", "ESP32-C3");
+    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+    https.setTimeout(10000);
+
+
+    // 3. Initialize the HTTP connection over TLS
+    if (https.begin(client, AWS_CHECK_IP_URL))
     {
-      int httpCode = http.GET();
+
+      // 4. Send HTTP GET Request
+      int httpCode = https.GET();
+
+      Serial.printf("[HTTPS] Response code: %d\n", httpCode);
+
+      // 5. Evaluate the Response Code
       if (httpCode > 0)
       {
-        Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-        String payload = http.getString();
-        Serial.println(payload);
-        publicIP = payload;
+        Serial.printf("[HTTPS] Response code: %d\n", httpCode);
+
+        if (httpCode == HTTP_CODE_OK)
+        {
+          String payload = https.getString();
+          publicIP = payload;
+          Serial.println("[HTTPS] Payload received:");
+          Serial.println(payload);
+        }
       }
       else
       {
-        Serial.printf("[HTTPS] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+        Serial.printf("[HTTPS] Connection failed, error: %s\n", https.errorToString(httpCode).c_str());
+        firstRun = true;
+        return;
       }
-      http.end();
+
+      // 6. Close the connection resource
+      https.end();
     }
+    else
+    {
+      Serial.println("[HTTPS] Unable to connect to server endpoint");
+      firstRun = true;
+      return;
+    }
+    firstRun = false;
   }
 }
 
@@ -232,6 +277,7 @@ void drawScreen_2(void)
   display.setTextColor(1);
   display.setTextWrap(false);
   display.setCursor(1, 4);
+  display.setTextSize(1);
   display.print("SSID:");
   // string 2
   display.setCursor(31, 4);
@@ -252,14 +298,35 @@ void drawScreen_2(void)
   display.display();
 }
 
+// Screen 3: IP
+void drawScreen_3(void) {
+    display.clearDisplay();
+    // string 1
+    display.setTextColor(1);
+    display.setTextWrap(false);
+    display.setTextSize(1);
+    display.setCursor(1, 5);
+    display.print("PubIP:");
+    // string 2
+    display.setCursor(37, 5);
+    display.print(publicIP);
+    // string 3
+    display.setCursor(7, 19);
+    display.print("LoIP:");
+    // string 4
+    display.setCursor(37, 19);
+    display.print(localIP);
+    display.display();
+}
+
 // Switch between screens
 void showScreen(unsigned long currentMillis)
 {
-  if (currentMillis - previousMillis1 >= interval3)
+  if (currentMillis - previousMillis1 >= INTERVAL_5000MS)
   {
     previousMillis1 = currentMillis;
     ++currentScreen;
-    if (currentScreen > 1)
+    if (currentScreen > 2)
     {
       currentScreen = 0;
     }
@@ -271,6 +338,9 @@ void showScreen(unsigned long currentMillis)
     break;
   case 1:
     drawScreen_2();
+    break;
+  case 2:
+    drawScreen_3();
     break;
   default:
     currentScreen = 0;
@@ -314,10 +384,10 @@ void setup()
   // the library initializes this with an Adafruit splash screen.
   display.display();
 
-  client.setCACert(rootCACertificate); // Connect to Wi-Fi first, then apply the cert
-  
+  // client.setCACert(rootCACertificateCheckIPAmazon); // Connect to Wi-Fi first, then apply the cert
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  
+
   Serial.printf("\n");
   Serial.printf("Conectando a Wi-Fi");
 
@@ -339,6 +409,11 @@ void setup()
 void loop()
 {
   unsigned long currentMillis = millis();
+  Serial.println("firstRun " + String(firstRun));
+  if (false)
+  {
+    getPublicIP(currentMillis);
+  }
   blink(currentMillis);
   showScreen(currentMillis);
 }

@@ -66,7 +66,7 @@ unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
 
 // Counters
-int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
+unsigned int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
 
 // HTTP Server credentials
 String localIP;
@@ -724,12 +724,12 @@ void setup()
   Serial.print("Conectado con la IP: ");
   Serial.println(WiFi.localIP());
   localIP = WiFi.localIP().toString();
-  startupTimeStr = getFormattedLocalDateTime();
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Activa la resistencia interna
   configTime(NTP_GMT_OFFSET_SEC, NTP_DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+  startupTimeStr = getFormattedLocalDateTime();
 }
 
 void loop()
