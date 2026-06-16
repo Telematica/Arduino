@@ -1,0 +1,6 @@
+{
+    "configuration": "CDCOnBoot=dis_cdc,PartitionScheme=default,CPUFreq=160,FlashFreq=80,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
+    "board": "esp32:esp32:makergo_c3_supermini",
+    "sketch": "ESP32-C3-Super-Mini.ino",
+    "port": "/dev/tty.usbmodem14301"
+}

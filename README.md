@@ -20,13 +20,17 @@
 - https://forum.arduino.cc/t/the-src-folder-in-libraries/1424441/3
 - https://forum.arduino.cc/t/accessing-the-current-date/1364965
 
+### Espressif
+- [ESP32 Timers](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/timer.html)
+
+### Pitches Lib
+
+- https://github.com/arduino/arduino-examples/blob/main/examples/02.Digital/toneMelody/pitches.h
+- https://docs.arduino.cc/built-in-examples/digital/toneMelody/
+
 ## TODO
 
 - Fix blink sync on: projects/Tasks/Tasks.ino
-
-## ESP8266MOD Node MCU
-
-- Core Version: 3.1.2
 
 ## Projects
 

@@ -1,10 +1,19 @@
+/*!
+ * @file TelegramHeartbeat.ino
+ * @author @Telematica
+ * @brief A simple IoT device that monitors temperature and humidity, displays the data on an OLED screen, and sends periodic updates to a Telegram bot.
+ *
+ * Using ESP8266MOD NodeMCU Hardware, WiFi library for WiFi connectivity and HTTP requests,
+ * Adafruit_SSD1306 for OLED display, DHT for temperature and humidity sensor,
+ * and NTP for time synchronization.
+ *
+ */
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
 #include <SPI.h>
 #include <time.h>
 #include <UrlEncode.h>
@@ -14,18 +23,24 @@
 #include "pitches.h"
 #include "NTP.h"
 
-#define ALTERNATIVE_I2C_SCL 14 // GPIO
-#define ALTERNATIVE_I2C_SDA 12 // GPIO
+#define ALTERNATIVE_I2C_SCL 14 // GPIO14 D5
+#define ALTERNATIVE_I2C_SDA 12 // GPIO12 D6
 #define BUTTON_PIN 13          // GPIO13 D7
-#define BUZZER_PIN 4           // GPIO4
-#define DHTPIN 5
-#define DHTTYPE DHT11
-#define LED1 LED_BUILTIN
-#define LED2 16
-#define REQUEST_INTERVAL 60000
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_RESET -1    // Reset pin # (or -1 if sharing Arduino reset pin)
+#define BUZZER_PIN 4           // GPIO4  D2
+#define DHTPIN 5               // GPIO5  D1
+#define DHTTYPE DHT11          // DHT 11 sensor type
+#define LED1 LED_BUILTIN       // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
+#define LED2 16                // Board LED: Connected to GPIO16 (labeled D0 on the board).
+#define OLED_RESET -1          // Reset pin # (or -1 if sharing Arduino reset pin)
+#define REQUEST_INTERVAL 60000 // Telegram Request fired every 60s
+#define SCREEN_HEIGHT 64       // OLED display height, in pixels
+#define SCREEN_WIDTH 128       // OLED display width, in pixels
+
+ADC_MODE(ADC_VCC); // Place this at the very top of your sketch (outside of setup)
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+DHT dht(DHTPIN, DHTTYPE);                                                 // DHT Temperature and Humidity Sensor setup
+WiFiClient wifiClient;                                                    // WiFi Client for HTTP requests
 
 // [BEGIN lopaka generated]
 static const unsigned char PROGMEM image_weather_temperature_bits[] = {0x1c, 0x00, 0x22, 0x02, 0x2b, 0x05, 0x2a, 0x02, 0x2b, 0x38, 0x2a, 0x60, 0x2b, 0x40, 0x2a, 0x40, 0x2a, 0x60, 0x49, 0x38, 0x9c, 0x80, 0xae, 0x80, 0xbe, 0x80, 0x9c, 0x80, 0x41, 0x00, 0x3e, 0x00};
@@ -38,14 +53,17 @@ static const unsigned char PROGMEM image_wifi_3_bars_bits[] = {0x00, 0x03, 0xff,
 static const unsigned char PROGMEM image_wifi_4_bars_bits[] = {0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x3c, 0x00, 0xf0, 0x00, 0x00, 0x3c, 0x00, 0xf0, 0x00, 0x03, 0xc0, 0x00, 0x0f, 0x00, 0x03, 0xc0, 0x00, 0x0f, 0x00, 0x0c, 0x03, 0xff, 0x00, 0xc0, 0x0c, 0x03, 0xff, 0x00, 0xc0, 0x30, 0x3f, 0xff, 0xf0, 0x30, 0x30, 0x3f, 0xff, 0xf0, 0x30, 0xc0, 0xff, 0x03, 0xfc, 0x0c, 0xc0, 0xff, 0x03, 0xfc, 0x0c, 0x33, 0xf0, 0xfc, 0x3f, 0x30, 0x33, 0xf0, 0xfc, 0x3f, 0x30, 0x0f, 0xcf, 0xff, 0xcf, 0xc0, 0x0f, 0xcf, 0xff, 0xcf, 0xc0, 0x03, 0x3f, 0x03, 0xf3, 0x00, 0x03, 0x3f, 0x03, 0xf3, 0x00, 0x00, 0xfc, 0xfc, 0xfc, 0x00, 0x00, 0xfc, 0xfc, 0xfc, 0x00, 0x00, 0x33, 0xff, 0x30, 0x00, 0x00, 0x33, 0xff, 0x30, 0x00, 0x00, 0x0f, 0xcf, 0xc0, 0x00, 0x00, 0x0f, 0xcf, 0xc0, 0x00, 0x00, 0x03, 0x33, 0x00, 0x00, 0x00, 0x03, 0x33, 0x00, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const unsigned char PROGMEM image_wifi_full_bits_2[] = {0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x3f, 0xff, 0xf0, 0x00, 0x00, 0x3f, 0xff, 0xf0, 0x00, 0x03, 0xfc, 0x00, 0xff, 0x00, 0x03, 0xfc, 0x00, 0xff, 0x00, 0x0f, 0xc3, 0xff, 0x0f, 0xc0, 0x0f, 0xc3, 0xff, 0x0f, 0xc0, 0x3f, 0x3f, 0xff, 0xf3, 0xf0, 0x3f, 0x3f, 0xff, 0xf3, 0xf0, 0xfc, 0xff, 0x03, 0xfc, 0xfc, 0xfc, 0xff, 0x03, 0xfc, 0xfc, 0x33, 0xf0, 0xfc, 0x3f, 0x30, 0x33, 0xf0, 0xfc, 0x3f, 0x30, 0x0f, 0xcf, 0xff, 0xcf, 0xc0, 0x0f, 0xcf, 0xff, 0xcf, 0xc0, 0x03, 0x3f, 0x03, 0xf3, 0x00, 0x03, 0x3f, 0x03, 0xf3, 0x00, 0x00, 0xfc, 0xfc, 0xfc, 0x00, 0x00, 0xfc, 0xfc, 0xfc, 0x00, 0x00, 0x33, 0xff, 0x30, 0x00, 0x00, 0x33, 0xff, 0x30, 0x00, 0x00, 0x0f, 0xcf, 0xc0, 0x00, 0x00, 0x0f, 0xcf, 0xc0, 0x00, 0x00, 0x03, 0x33, 0x00, 0x00, 0x00, 0x03, 0x33, 0x00, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const unsigned char PROGMEM image_weather_temperature_bits_big[] = {0x03, 0xf0, 0x00, 0x00, 0x03, 0xf0, 0x00, 0x00, 0x0c, 0x0c, 0x00, 0x0c, 0x0c, 0x0c, 0x00, 0x0c, 0x0c, 0xcf, 0x00, 0x33, 0x0c, 0xcf, 0x00, 0x33, 0x0c, 0xcc, 0x00, 0x0c, 0x0c, 0xcc, 0x00, 0x0c, 0x0c, 0xcf, 0x0f, 0xc0, 0x0c, 0xcf, 0x0f, 0xc0, 0x0c, 0xcc, 0x3c, 0x00, 0x0c, 0xcc, 0x3c, 0x00, 0x0c, 0xcf, 0x30, 0x00, 0x0c, 0xcf, 0x30, 0x00, 0x0c, 0xcc, 0x30, 0x00, 0x0c, 0xcc, 0x30, 0x00, 0x0c, 0xcc, 0x3c, 0x00, 0x0c, 0xcc, 0x3c, 0x00, 0x30, 0xc3, 0x0f, 0xc0, 0x30, 0xc3, 0x0f, 0xc0, 0xc3, 0xf0, 0xc0, 0x00, 0xc3, 0xf0, 0xc0, 0x00, 0xcc, 0xfc, 0xc0, 0x00, 0xcc, 0xfc, 0xc0, 0x00, 0xcf, 0xfc, 0xc0, 0x00, 0xcf, 0xfc, 0xc0, 0x00, 0xc3, 0xf0, 0xc0, 0x00, 0xc3, 0xf0, 0xc0, 0x00, 0x30, 0x03, 0x00, 0x00, 0x30, 0x03, 0x00, 0x00, 0x0f, 0xfc, 0x00, 0x00, 0x0f, 0xfc, 0x00, 0x00};
+static const unsigned char PROGMEM image_network_www_bits[] = {0x03, 0xc0, 0x0d, 0xb0, 0x32, 0x4c, 0x24, 0x24, 0x44, 0x22, 0x7f, 0xfe, 0x88, 0x11, 0x88, 0x11, 0x88, 0x11, 0x88, 0x11, 0x7f, 0xfe, 0x44, 0x22, 0x24, 0x24, 0x32, 0x4c, 0x0d, 0xb0, 0x03, 0xc0};
+
+// Internal Constants
+static const byte INTERVAL_100MS = 100;
+static const unsigned int INTERVAL_2000MS = 2000;
 
 // Task timers and intervals
+// @todo Change millis() logic to avoid 49 days limit
 unsigned long previousMillis1 = 0;
-unsigned long interval1 = 100; // Task 1 interval (e.g., 200 milliseconds)
 unsigned long previousMillis2 = 0;
-unsigned long interval2 = 2000; // Task 2 interval (e.g., 5000 milliseconds)
 unsigned long previousMillis3 = 0;
-unsigned long previousMillis4 = 0;
 
 // Counters
 int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
@@ -67,15 +85,6 @@ bool firstRun = true;
 bool isScreenOff = false;
 bool lightsOff = false;
 bool enableSerialOutput = true;
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-// DHT Temperature and Humidity Sensor setup
-DHT dht(DHTPIN, DHTTYPE);
-
-// WiFi Client for HTTP requests
-WiFiClient wifiClient;
 
 /**
  * FUNCTIONS
@@ -103,7 +112,7 @@ void blink(unsigned long currentMillis)
   }
 
   // --- Task 1 ---
-  if (currentMillis - previousMillis1 >= interval1)
+  if (currentMillis - previousMillis1 >= INTERVAL_100MS)
   {
     previousMillis1 = currentMillis;
 
@@ -121,7 +130,7 @@ void blink(unsigned long currentMillis)
   // --- Task 2 ---
   currentMillis = millis(); // Get the current time again (or use the previous one)
 
-  if (currentMillis - previousMillis2 >= interval1 + 500)
+  if (currentMillis - previousMillis2 >= INTERVAL_100MS + 500)
   {
     previousMillis2 = currentMillis;
 
@@ -145,7 +154,7 @@ String getFormattedLocalDateTime()
     Serial.println("Failed to obtain time");
     return "(Error)";
   }
-  char timeString[25]; // Buffer to hold formatted string
+  char timeString[25];                                                      // Buffer to hold formatted string
   strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", &timeinfo); // Format: "YYYY-MM-DD HH:MM:SS"
   return timeString;
 }
@@ -217,6 +226,7 @@ void printMemoryUsage()
   Serial.println(" KB");
 }
 
+// @todo Use secure request (HTTPS)
 void getPublicIP()
 {
   if (WiFi.status() == WL_CONNECTED)
@@ -244,6 +254,7 @@ void getPublicIP()
   }
 }
 
+// @todo Use secure request (HTTPS)
 void telegramRequest(unsigned long currentMillis)
 {
   if (firstRun || (currentMillis - previousMillis3 >= REQUEST_INTERVAL))
@@ -337,7 +348,7 @@ void nokiaRingtone()
 
 void playAlarm(unsigned long currentMillis)
 {
-  // Format: "YYYY-MM-DD HH:MM:SS"
+  // timeStr Format: "YYYY-MM-DD HH:MM:SS"
   String currentMinute = timeStr.substring(14, 16);
   String currentHour = timeStr.substring(11, 13);
   Serial.println("currentMinute: " + String(currentMinute));
@@ -354,16 +365,22 @@ void readButton()
 {
   int buttonState = digitalRead(BUTTON_PIN);
   Serial.println("Button state: " + String(buttonState));
+
   if (buttonState == LOW)
   {
     ++currentScreen;
-    if (currentScreen == 3)
+    if (currentScreen > 4)
+    {
+      currentScreen = 0;
+    }
+    /*
+    if (currentScreen == 2)
     {
       lightsOff = true;
       isScreenOff = true;
       display.ssd1306_command(SSD1306_DISPLAYOFF); // Send sleep command (0xAE)
     }
-    if (currentScreen > 3)
+    if (currentScreen > 2)
     {
       lightsOff = false;
       isScreenOff = false;
@@ -371,12 +388,19 @@ void readButton()
       display.clearDisplay();
       display.display();
       currentScreen = 0;
-    }
+    }*/
     delay(200); // Debounce delay
   }
 }
 
-// Temperature and Humidity + Date/Time + WiFi RSSI screen
+/**
+ * SCREEN DRAWING FUNCTIONS
+ * --------------------------------------------------------------------------------
+ * --------------------------------------------------------------------------------
+ * --------------------------------------------------------------------------------
+ */
+
+// Screen 1: Temperature and Humidity + Date/Time + WiFi RSSI screen
 void drawScreen_1(void)
 {
   if (lightsOff)
@@ -459,7 +483,7 @@ void drawScreen_1(void)
   display.display();
 }
 
-// WiFi SSID + RSSI screen
+// Screen 2: WiFi SSID + RSSI screen
 void drawScreen_2(void)
 {
   if (lightsOff)
@@ -476,27 +500,27 @@ void drawScreen_2(void)
   int rssi = WiFi.RSSI();
   String ssid = WiFi.SSID();
   display.clearDisplay();
-  if (rssi <= -50)
+  if (rssi >= -50)
   {
     display.drawBitmap(88, 3, image_wifi_full_bits_2, 38, 32, 1);
   }
-  else if (rssi > -50 && rssi <= -60)
+  else if (rssi < -50 && rssi >= -60)
   {
     display.drawBitmap(88, 3, image_wifi_4_bars_bits, 38, 32, 1);
   }
-  else if (rssi > -60 && rssi <= -70)
+  else if (rssi < -60 && rssi >= -70)
   {
     display.drawBitmap(88, 3, image_wifi_3_bars_bits, 38, 32, 1);
   }
-  else if (rssi > -70 && rssi <= -80)
+  else if (rssi < -70 && rssi >= -80)
   {
     display.drawBitmap(88, 3, image_wifi_2_bars_bits, 38, 32, 1);
   }
-  else if (rssi > -80 && rssi <= -90)
+  else if (rssi < -80 && rssi >= -90)
   {
     display.drawBitmap(88, 3, image_wifi_1_bits, 38, 32, 1);
   }
-  else if (rssi > -90 || WiFi.status() != WL_CONNECTED)
+  else if (rssi < -90 || WiFi.status() != WL_CONNECTED)
   {
     display.drawBitmap(88, 3, image_wifi_not_connected_bits2, 38, 32, 1);
   }
@@ -523,7 +547,7 @@ void drawScreen_2(void)
   display.display();
 }
 
-// Temperatura and Humidity screen
+// Screen 3: Temperatura and Humidity screen
 void drawScreen_3(void)
 {
   if (lightsOff)
@@ -560,6 +584,80 @@ void drawScreen_3(void)
   display.display();
 }
 
+// Screen 4: IP and Voltage screen
+void drawScreen_4(void)
+{
+  float voltage = ESP.getVcc(); // / 1000.0 // Get voltage in millivolts and convert to volts
+  display.clearDisplay();
+  // string 1
+  display.setTextSize(1);
+  display.setTextColor(1);
+  display.setTextWrap(false);
+  display.setCursor(1, 1);
+  display.print("PubIP:");
+  // string 2
+  display.setCursor(38, 10);
+  display.print(publicIP);
+  // string 5
+  display.setCursor(1, 47);
+  display.print("Voltage:");
+  // string 3
+  display.setCursor(1, 22);
+  display.print("Lo IP:");
+  // string 4
+  display.setCursor(38, 31);
+  display.print(localIP);
+  // string 6
+  display.setCursor(50, 42);
+  display.print(voltage / 1000.0);
+  // string 7
+  display.setCursor(98, 42);
+  display.print("V");
+  // string 8
+  display.setCursor(50, 53);
+  display.print(voltage);
+  // string 9
+  display.setCursor(92, 53);
+  display.print("mV");
+  display.drawBitmap(110, 44, image_network_www_bits, 16, 16, 1);
+  display.display();
+}
+
+void drawScreen_5(void)
+{
+  display.clearDisplay();
+  // string 1
+  display.setTextColor(1);
+  display.setTextWrap(false);
+  display.setCursor(1, 4);
+  display.print("Free Heap: ");
+  // string 2
+  display.setCursor(116, 5);
+  display.print("KB");
+  // string 4
+  display.setCursor(72, 5);
+  display.print(ESP.getFreeHeap() / 1024);
+  // string 4
+  display.setCursor(1, 20);
+  display.print("Fragmentation: ");
+  // string 5
+  display.setCursor(72, 32);
+  display.print(ESP.getHeapFragmentation());
+  // string 6
+  display.setCursor(116, 30);
+  display.print("%");
+  // string 7
+  display.setCursor(1, 43);
+  display.print("Max Free Block: ");
+  // string 8
+  display.setCursor(72, 54);
+  display.print(ESP.getMaxFreeBlockSize());
+  // string 9
+  display.setCursor(116, 54);
+  display.print("B");
+  display.display();
+}
+
 // Switch between screens
 void showScreen()
 {
@@ -574,8 +672,13 @@ void showScreen()
   case 2:
     drawScreen_3();
     break;
+  case 3:
+    drawScreen_4();
+    break;
+  case 4:
+    drawScreen_5();
+    break;
   default:
-    currentScreen = 0;
     drawScreen_1();
     break;
   }
@@ -590,9 +693,9 @@ void showScreen()
 
 void setup()
 {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   dht.begin();
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Wire.begin(ALTERNATIVE_I2C_SDA, ALTERNATIVE_I2C_SCL);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -605,14 +708,13 @@ void setup()
 
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
+  delay(100);             // Wait for the display to power on completely
+  display.clearDisplay(); // Clear the buffer
   display.display();
 
-  // Clear the buffer
-  display.clearDisplay();
-
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.printf("\n");
   Serial.printf("Conectando a Wi-Fi");
+
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(1000);
@@ -622,12 +724,12 @@ void setup()
   Serial.print("Conectado con la IP: ");
   Serial.println(WiFi.localIP());
   localIP = WiFi.localIP().toString();
+  startupTimeStr = getFormattedLocalDateTime();
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Activa la resistencia interna
   configTime(NTP_GMT_OFFSET_SEC, NTP_DAYLIGHT_OFFSET_SEC, NTP_SERVER);
-  startupTimeStr = getFormattedLocalDateTime();
 }
 
 void loop()

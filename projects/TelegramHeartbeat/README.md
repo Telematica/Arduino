@@ -39,3 +39,5 @@
 - https://www.google.com/search?q=esp8266+async+request+client+code&sca_esv=b0606a0ae3ff7c6b&biw=1866&bih=1042&sxsrf=ANbL-n5ic2oG-gxXKS9NJIEa3Z4BrPfaEA%3A1780688267981&ei=iyUjauLNO-SoqtsPzs2kwAo&oq=esp8266+async+request+code&gs_lp=Egxnd3Mtd2l6LXNlcnAiGmVzcDgyNjYgYXN5bmMgcmVxdWVzdCBjb2RlKgIIADIIECEYoAEYwwQyCBAhGKABGMMEMggQIRigARjDBEiPIFCPAljfD3ACeAGQAQCYAcQBoAH2BaoBAzQuM7gBA8gBAPgBAZgCCaACqgbCAgoQABhHGNYEGLADwgIFEAAY7wXCAggQABiABBiiBMICChAhGAoYoAEYwwSYAwCIBgGQBgiSBwU1LjMuMaAHoBuyBwUzLjMuMbgHmwbCBwUwLjQuNcgHIoAIAQ&sclient=gws-wiz-serp
 - https://github.com/khoih-prog/AsyncHTTPRequest_Generic
 - https://robots-argentina.com.ar/referencia-de-distribucion-de-pines-ESP8266-que-pines-GPIO-usar.htm
+
+### MOTOR FN5015LS
