@@ -231,11 +231,12 @@ void getPublicIP()
 {
   if (WiFi.status() == WL_CONNECTED)
   {
-    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    // Use this to skip certificate validation
-    client->setInsecure();
+    WiFiClientSecure client;
     HTTPClient https;
-    if (https.begin(*client, AWS_CHECK_IP_URL))
+    X509List cert(rootCACertificate);
+    client.setTrustAnchors(&cert);
+
+    if (https.begin(client, AWS_CHECK_IP_URL))
     {
       int httpCode = https.GET();
       if (httpCode > 0)
@@ -262,10 +263,15 @@ void telegramRequest(unsigned long currentMillis)
     previousMillis3 = currentMillis;
     if (WiFi.status() == WL_CONNECTED)
     {
-      std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+      WiFiClientSecure client;
+      HTTPClient https;
+      X509List cert(rootCACertificateTelegram);
+      client.setTrustAnchors(&cert);
+      // std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
       // @todo - Implement certificate validation using BearSSL::X509List and client->setTrustAnchors()
       // Use this to skip certificate validation
-      client->setInsecure();
+      // client->setInsecure();
+      https.setReuse(false);
       getLT();
       getPublicIP();
       readSensors();
@@ -307,9 +313,8 @@ void telegramRequest(unsigned long currentMillis)
       url += "&";
       url += "text=";
       url += text;
-      HTTPClient https;
 
-      if (https.begin(*client, url))
+      if (https.begin(client, url))
       {
         int httpCode = https.GET();
         if (httpCode > 0)

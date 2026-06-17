@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <BLEDevice.h>
+// #include <BLEServer.h>
 #include <esp_system.h>
 #include <HTTPClient.h>
 #include "NTP.h"
@@ -40,15 +42,18 @@ static const unsigned char PROGMEM image_wifi_3_bars_bits[] = {0x01, 0xf0, 0x00,
 static const unsigned char PROGMEM image_wifi_25_bits[] = {0x01, 0xf0, 0x00, 0x06, 0x0c, 0x00, 0x18, 0x03, 0x00, 0x21, 0xf0, 0x80, 0x46, 0x0c, 0x40, 0x88, 0x02, 0x20, 0x50, 0xe1, 0x40, 0x23, 0x18, 0x80, 0x14, 0x05, 0x00, 0x08, 0xe2, 0x00, 0x05, 0xf4, 0x00, 0x03, 0xb8, 0x00, 0x01, 0x50, 0x00, 0x00, 0xe0, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00};
 static const unsigned char PROGMEM image_wifi_2_bits[] = {0x01, 0xf0, 0x00, 0x06, 0x0c, 0x00, 0x18, 0x03, 0x00, 0x21, 0xf0, 0x80, 0x46, 0x0c, 0x40, 0x88, 0x02, 0x20, 0x10, 0xe1, 0x00, 0x23, 0x18, 0x80, 0x04, 0x04, 0x00, 0x08, 0x42, 0x00, 0x01, 0xb0, 0x00, 0x02, 0x08, 0x00, 0x00, 0x40, 0x00, 0x00, 0xa0, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00};
 static const unsigned char PROGMEM image_wifi_not_connected_bits[] = {0x21, 0xf0, 0x00, 0x16, 0x0c, 0x00, 0x08, 0x03, 0x00, 0x25, 0xf0, 0x80, 0x42, 0x0c, 0x40, 0x89, 0x02, 0x20, 0x10, 0xa1, 0x00, 0x23, 0x58, 0x80, 0x04, 0x24, 0x00, 0x08, 0x52, 0x00, 0x01, 0xa8, 0x00, 0x02, 0x04, 0x00, 0x00, 0x42, 0x00, 0x00, 0xa1, 0x00, 0x00, 0x40, 0x80, 0x00, 0x00, 0x00};
+static const unsigned char PROGMEM image_choice_right_bits[] = {0x03, 0xc0, 0x0c, 0x30, 0x11, 0x88, 0x26, 0x64, 0x48, 0x12, 0x50, 0x0a, 0x90, 0x29, 0xa4, 0x45, 0xa2, 0x85, 0x91, 0x09, 0x50, 0x0a, 0x48, 0x12, 0x26, 0x64, 0x11, 0x88, 0x0c, 0x30, 0x03, 0xc0};
 
 // Internal Constants
-static const byte INTERVAL_100MS = 100;
-static const unsigned int INTERVAL_5000MS = 5000;
+static const unsigned short INTERVAL_500MS = 500;
+static const unsigned short INTERVAL_5000MS = 5000;
 
 // Task timers and intervals
+unsigned long currentMillis = millis();
 unsigned long previousMillis1 = 0;
 unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
+unsigned long previousMillis4 = 0;
 
 // Counters
 unsigned int currentScreen = 0; // 0: Time, 1: SSID/RSSI, 2: Uptime, 3: Public IP and Local IP
@@ -62,7 +67,7 @@ String timeStr;
 String startupTimeStr;
 
 // Flags
-bool firstRun = true;
+bool pubIPSucess = false;
 // bool isScreenOff = false;
 // bool lightsOff = false;
 // bool enableSerialOutput = true;
@@ -76,9 +81,7 @@ bool firstRun = true;
 
 void blink(unsigned long currentMillis)
 {
-  // String currentHour = timeStr.substring(11, 13);
-  currentMillis = millis(); // Get the current time again (or use the previous one)
-  if (currentMillis - previousMillis2 >= INTERVAL_100MS + 500)
+  if (currentMillis - previousMillis2 >= INTERVAL_500MS)
   {
     previousMillis2 = currentMillis;
 
@@ -149,10 +152,14 @@ void printMemoryUsage()
 
 void getPublicIP(unsigned long currentMillis)
 {
-  if (currentMillis - previousMillis3 >= INTERVAL_100MS + 1900)
+  if (pubIPSucess)
+    return;
+  if (currentMillis - previousMillis3 >= INTERVAL_5000MS)
   {
     previousMillis3 = currentMillis;
-  } else {
+  }
+  else
+  {
     return;
   }
   if (WiFi.status() == WL_CONNECTED)
@@ -162,19 +169,18 @@ void getPublicIP(unsigned long currentMillis)
     HTTPClient https;
 
     // configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-    
+
     // 2. Assign the Root CA certificate to validate the server
-    client.setCACert(rootCACertificateCheckIPAmazon);
+    client.setCACert(rootCACertificate);
 
     // Note: For quick testing without certificate validation, uncomment below:
     // client.setInsecure();
 
     Serial.println("\nStarting secure HTTP request...");
     https.setReuse(false);
-    https.addHeader("User-Agent", "ESP32-C3");
-    https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+    // https.addHeader("User-Agent", "ESP32-C3");
+    // https.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
     https.setTimeout(10000);
-
 
     // 3. Initialize the HTTP connection over TLS
     if (https.begin(client, AWS_CHECK_IP_URL))
@@ -201,8 +207,7 @@ void getPublicIP(unsigned long currentMillis)
       else
       {
         Serial.printf("[HTTPS] Connection failed, error: %s\n", https.errorToString(httpCode).c_str());
-        firstRun = true;
-        return;
+        pubIPSucess = false;
       }
 
       // 6. Close the connection resource
@@ -211,10 +216,10 @@ void getPublicIP(unsigned long currentMillis)
     else
     {
       Serial.println("[HTTPS] Unable to connect to server endpoint");
-      firstRun = true;
+      pubIPSucess = false;
       return;
     }
-    firstRun = false;
+    pubIPSucess = true;
   }
 }
 
@@ -237,8 +242,25 @@ void drawScreen_1(void)
   display.display();
 }
 
-// Screen 2: WiFi SSID + RSSI screen
 void drawScreen_2(void)
+{
+  display.clearDisplay();
+  // string 3
+  display.setTextColor(1);
+  display.setTextSize(2);
+  display.setTextWrap(false);
+  display.setCursor(1, 1);
+  display.print(startupTimeStr.substring(0, 11));
+  // string 4
+  display.setCursor(1, 17);
+  display.print(startupTimeStr.substring(11, 22));
+  // choice_right
+  display.drawBitmap(112, 15, image_choice_right_bits, 16, 16, 1);
+  display.display();
+}
+
+// Screen 2: WiFi SSID + RSSI screen
+void drawScreen_3(void)
 {
   int rssi = WiFi.RSSI();
   String ssid = WiFi.SSID();
@@ -299,24 +321,25 @@ void drawScreen_2(void)
 }
 
 // Screen 3: IP
-void drawScreen_3(void) {
-    display.clearDisplay();
-    // string 1
-    display.setTextColor(1);
-    display.setTextWrap(false);
-    display.setTextSize(1);
-    display.setCursor(1, 5);
-    display.print("PubIP:");
-    // string 2
-    display.setCursor(37, 5);
-    display.print(publicIP);
-    // string 3
-    display.setCursor(7, 19);
-    display.print("LoIP:");
-    // string 4
-    display.setCursor(37, 19);
-    display.print(localIP);
-    display.display();
+void drawScreen_4(void)
+{
+  display.clearDisplay();
+  // string 1
+  display.setTextColor(1);
+  display.setTextWrap(false);
+  display.setTextSize(1);
+  display.setCursor(1, 5);
+  display.print("PubIP:");
+  // string 2
+  display.setCursor(37, 5);
+  display.print(publicIP);
+  // string 3
+  display.setCursor(7, 19);
+  display.print("LoIP:");
+  // string 4
+  display.setCursor(37, 19);
+  display.print(localIP);
+  display.display();
 }
 
 // Switch between screens
@@ -326,26 +349,33 @@ void showScreen(unsigned long currentMillis)
   {
     previousMillis1 = currentMillis;
     ++currentScreen;
-    if (currentScreen > 2)
+    if (currentScreen > 3)
     {
       currentScreen = 0;
     }
   }
-  switch (currentScreen)
+  if (currentMillis - previousMillis4 >= 1000)
   {
-  case 0:
-    drawScreen_1();
-    break;
-  case 1:
-    drawScreen_2();
-    break;
-  case 2:
-    drawScreen_3();
-    break;
-  default:
-    currentScreen = 0;
-    drawScreen_1();
-    break;
+    previousMillis4 = currentMillis;
+    switch (currentScreen)
+    {
+    case 0:
+      drawScreen_1();
+      break;
+    case 1:
+      drawScreen_2();
+      break;
+    case 2:
+      drawScreen_3();
+      break;
+    case 3:
+      drawScreen_4();
+      break;
+    default:
+      drawScreen_1();
+      break;
+    }
+    progressBar(currentMillis);
   }
 }
 
@@ -358,8 +388,11 @@ void showScreen(unsigned long currentMillis)
 
 void setup()
 {
-  // put your setup code here, to run once:
   Serial.begin(115200);
+
+  // Explicitly Disable BLE
+  Serial.println("Disabling BLE...");
+  BLEDevice::deinit(true);
 
   // delay(2000); // Give the chip 2 seconds to start instead of waiting for USB
 
@@ -406,14 +439,40 @@ void setup()
   startupTimeStr = getFormattedLocalDateTime();
 }
 
+void progressBar(unsigned long currentMillis)
+{
+  unsigned long progress = currentMillis - previousMillis1;
+  int x2 = 0;
+  // Serial.println("Diff: " + String(a));
+  if (progress >= 0 && progress < 1000)
+  {
+    x2 = 25;
+  }
+  else if (progress >= 1000 && progress <= 2000)
+  {
+    x2 = 50;
+  }
+  else if (progress >= 2000 && progress < 3000)
+  {
+    x2 = 75;
+  }
+  else if (progress >= 3000 && progress < 4000)
+  {
+    x2 = 100;
+  }
+  else if (progress >= 4000 && progress < 5000)
+  {
+    x2 = 127;
+  }
+  // display.drawLine(0, 31, x2, 31, WHITE);
+  display.drawLine(0, 31, x2, 31, WHITE);
+  display.display();
+}
+
 void loop()
 {
-  unsigned long currentMillis = millis();
-  Serial.println("firstRun " + String(firstRun));
-  if (false)
-  {
-    getPublicIP(currentMillis);
-  }
+  currentMillis = millis();
   blink(currentMillis);
+  getPublicIP(currentMillis);
   showScreen(currentMillis);
 }
