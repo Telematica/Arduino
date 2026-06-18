@@ -14,23 +14,24 @@
 #include <DHT.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
+#include <NTP.h>
+#include <PinsESP8266MODv3.h>
+#include <pitches.h>
 #include <SPI.h>
+#include "src/secrets/Secrets.h"
 #include <time.h>
 #include <UrlEncode.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
-#include "src/secrets/Secrets.h"
-#include "pitches.h"
-#include "NTP.h"
 
-#define ALTERNATIVE_I2C_SCL 14 // GPIO14 D5
-#define ALTERNATIVE_I2C_SDA 12 // GPIO12 D6
-#define BUTTON_PIN 13          // GPIO13 D7
-#define BUZZER_PIN 4           // GPIO4  D2
-#define DHTPIN 5               // GPIO5  D1
+#define ALTERNATIVE_I2C_SCL D5 // GPIO14 D5
+#define ALTERNATIVE_I2C_SDA D6 // GPIO12 D6
+#define BUTTON_PIN D7          // GPIO13 D7
+#define BUZZER_PIN D2          // GPIO4  D2
+#define DHTPIN D1              // GPIO5  D1
 #define DHTTYPE DHT11          // DHT 11 sensor type
 #define LED1 LED_BUILTIN       // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
-#define LED2 16                // Board LED: Connected to GPIO16 (labeled D0 on the board).
+#define LED2 D0                // Board LED: Connected to GPIO16 (labeled D0 on the board).
 #define OLED_RESET -1          // Reset pin # (or -1 if sharing Arduino reset pin)
 #define REQUEST_INTERVAL 60000 // Telegram Request fired every 60s
 #define SCREEN_HEIGHT 64       // OLED display height, in pixels

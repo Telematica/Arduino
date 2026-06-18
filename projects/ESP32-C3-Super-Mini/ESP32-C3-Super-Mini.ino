@@ -19,11 +19,13 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
+#include <PinsESP32C3SuperMini.h>
+// /Users/dealersocket/Arduino/libraries/Shared/PinsESP32C3SuperMini.h
 
 // #define ARDUINO_USB_CDC_ON_BOOT 1
 // #define ARDUINO_USB_MODE 1
-#define I2C_SDA 5        // GPIO5 / SDA (Data)
-#define I2C_SCL 6        // GPIO5 / SCL / SCK (Clock)
+#define I2C_SDA GPIO5    // GPIO5 / SDA (Data)
+#define I2C_SCL GPIO6    // GPIO5 / SCL / SCK (Clock)
 #define LED LED_BUILTIN  // GPI08 BLUE_LED
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -56,7 +58,7 @@ unsigned long previousMillis3 = 0;
 unsigned long previousMillis4 = 0;
 
 // Counters
-unsigned int currentScreen = 0; // 0: Time, 1: SSID/RSSI, 2: Uptime, 3: Public IP and Local IP
+unsigned int currentScreen = 0; // 0: Time, 1: SSID/RSSI, 2: Uptime, 3: Public IP and Local IP ...
 
 // HTTP Server credentials
 String localIP;
@@ -242,6 +244,7 @@ void drawScreen_1(void)
   display.display();
 }
 
+// Screen 2: Uptime
 void drawScreen_2(void)
 {
   display.clearDisplay();
@@ -259,7 +262,7 @@ void drawScreen_2(void)
   display.display();
 }
 
-// Screen 2: WiFi SSID + RSSI screen
+// Screen 3: WiFi SSID + RSSI screen
 void drawScreen_3(void)
 {
   int rssi = WiFi.RSSI();
@@ -320,7 +323,7 @@ void drawScreen_3(void)
   display.display();
 }
 
-// Screen 3: IP
+// Screen 4: IP Public/Local
 void drawScreen_4(void)
 {
   display.clearDisplay();
@@ -342,7 +345,7 @@ void drawScreen_4(void)
   display.display();
 }
 
-// Switch between screens
+// Switch between screens logic
 void showScreen(unsigned long currentMillis)
 {
   if (currentMillis - previousMillis1 >= INTERVAL_5000MS)
@@ -377,6 +380,35 @@ void showScreen(unsigned long currentMillis)
     }
     progressBar(currentMillis);
   }
+}
+
+void progressBar(unsigned long currentMillis)
+{
+  unsigned long progress = currentMillis - previousMillis1;
+  int x2 = 0;
+  if (progress >= 0 && progress < 1000)
+  {
+    x2 = 25;
+  }
+  else if (progress >= 1000 && progress <= 2000)
+  {
+    x2 = 50;
+  }
+  else if (progress >= 2000 && progress < 3000)
+  {
+    x2 = 75;
+  }
+  else if (progress >= 3000 && progress < 4000)
+  {
+    x2 = 100;
+  }
+  else if (progress >= 4000 && progress < 5000)
+  {
+    x2 = 127;
+  }
+  // display.drawLine(0, 31, x2, 31, WHITE);
+  display.drawLine(0, 31, x2, 31, WHITE);
+  display.display();
 }
 
 /**
@@ -437,36 +469,6 @@ void setup()
   // pinMode(BUTTON_PIN, INPUT_PULLUP); // Activa la resistencia interna
   configTime(NTP_GMT_OFFSET_SEC, NTP_DAYLIGHT_OFFSET_SEC, NTP_SERVER);
   startupTimeStr = getFormattedLocalDateTime();
-}
-
-void progressBar(unsigned long currentMillis)
-{
-  unsigned long progress = currentMillis - previousMillis1;
-  int x2 = 0;
-  // Serial.println("Diff: " + String(a));
-  if (progress >= 0 && progress < 1000)
-  {
-    x2 = 25;
-  }
-  else if (progress >= 1000 && progress <= 2000)
-  {
-    x2 = 50;
-  }
-  else if (progress >= 2000 && progress < 3000)
-  {
-    x2 = 75;
-  }
-  else if (progress >= 3000 && progress < 4000)
-  {
-    x2 = 100;
-  }
-  else if (progress >= 4000 && progress < 5000)
-  {
-    x2 = 127;
-  }
-  // display.drawLine(0, 31, x2, 31, WHITE);
-  display.drawLine(0, 31, x2, 31, WHITE);
-  display.display();
 }
 
 void loop()
