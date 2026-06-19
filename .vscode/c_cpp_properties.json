@@ -17,6 +17,7 @@
             ],
             "intelliSenseMode": "gcc-x64",
             "includePath": [
+                "${workspaceFolder}/libraries/Shared/src",
                 "/Users/dealersocket/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include",
                 "/Users/dealersocket/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include",
                 "/private/var/folders/hk/x8tqh0c91jj15fd7wpbzwg9h0000gp/T/arduino/sketches/9F99E50D3CAFC6CF2DBAB6D8B3CE6B77/core",

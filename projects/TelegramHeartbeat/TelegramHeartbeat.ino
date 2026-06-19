@@ -8,6 +8,7 @@
  * and NTP for time synchronization.
  *
  */
+#include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_Sensor.h>
@@ -67,7 +68,7 @@ unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
 
 // Counters
-unsigned int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
+volatile unsigned int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
 
 // HTTP Server credentials
 String localIP;
@@ -86,6 +87,8 @@ bool firstRun = true;
 bool isScreenOff = false;
 bool lightsOff = false;
 bool enableSerialOutput = true;
+volatile bool alarmOn = true;
+volatile bool eventTriggered = false;
 
 /**
  * FUNCTIONS
@@ -344,6 +347,9 @@ void nokiaRingtone()
 
   for (int i = 0; i < 13; i++)
   {
+    if (!alarmOn) {
+      return;
+    }
     tone(BUZZER_PIN, nokiaRingtone[i], noteDurations[i]);
 
     // Pause between notes
@@ -359,44 +365,20 @@ void playAlarm(unsigned long currentMillis)
   String currentHour = timeStr.substring(11, 13);
   Serial.println("currentMinute: " + String(currentMinute));
   Serial.println("currentHour: " + String(currentHour));
-  if ((currentMinute == "00" && currentHour == "07") || (currentMinute == "00" && currentHour == "08"))
+  if (
+    alarmOn &&
+    (currentMinute == "00" && currentHour == "07") ||
+    (currentMinute == "00" && currentHour == "08"))
   {
     Serial.println("Playing alarm...");
     nokiaRingtone();
+  } else if(
+    !((currentMinute == "00" && currentHour == "07") ||
+    (currentMinute == "00" && currentHour == "08"))
+  ) {
+    alarmOn = true;
   }
   delay(20);
-}
-
-void readButton()
-{
-  int buttonState = digitalRead(BUTTON_PIN);
-  Serial.println("Button state: " + String(buttonState));
-
-  if (buttonState == LOW)
-  {
-    ++currentScreen;
-    if (currentScreen > 4)
-    {
-      currentScreen = 0;
-    }
-    /*
-    if (currentScreen == 2)
-    {
-      lightsOff = true;
-      isScreenOff = true;
-      display.ssd1306_command(SSD1306_DISPLAYOFF); // Send sleep command (0xAE)
-    }
-    if (currentScreen > 2)
-    {
-      lightsOff = false;
-      isScreenOff = false;
-      display.ssd1306_command(SSD1306_DISPLAYON); // Send wake command (0xAF)
-      display.clearDisplay();
-      display.display();
-      currentScreen = 0;
-    }*/
-    delay(200); // Debounce delay
-  }
 }
 
 /**
@@ -691,6 +673,31 @@ void showScreen()
 }
 
 /**
+ * Interruptions
+ * --------------------------------------------------------------------------------
+ * --------------------------------------------------------------------------------
+ * --------------------------------------------------------------------------------
+ */
+
+void ICACHE_RAM_ATTR handleInterrupt()
+{
+  // Keep interruption logic simple, no delay(), no time consuming tasks
+  // otherwise system will crash
+
+  volatile int buttonState = digitalRead(BUTTON_PIN);
+  eventTriggered = true; // Set flag
+  if (buttonState == LOW)
+  {
+    alarmOn = false;
+    ++currentScreen;
+    if (currentScreen > 4)
+    {
+      currentScreen = 0;
+    }
+  }
+}
+
+/**
  * SETUP AND LOOP
  * --------------------------------------------------------------------------------
  * --------------------------------------------------------------------------------
@@ -736,14 +743,25 @@ void setup()
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Activa la resistencia interna
   configTime(NTP_GMT_OFFSET_SEC, NTP_DAYLIGHT_OFFSET_SEC, NTP_SERVER);
   startupTimeStr = getFormattedLocalDateTime();
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleInterrupt, FALLING);
 }
 
 void loop()
 {
   unsigned long currentMillis = millis();
-  readButton();
+  // readButton();
   blink(currentMillis);
   showScreen();
   playAlarm(currentMillis);
   telegramRequest(currentMillis);
+  if (eventTriggered) {
+    // Disable interrupt briefly while processing
+    detachInterrupt(digitalPinToInterrupt(BUTTON_PIN)); 
+    
+    Serial.println("Interrupt Occurred!");
+    
+    // Reset flag and re-enable interrupt
+    eventTriggered = false;
+    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleInterrupt, FALLING);
+  }
 }

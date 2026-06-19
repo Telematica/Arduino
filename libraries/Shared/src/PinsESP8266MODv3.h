@@ -13,5 +13,5 @@ static const uint8_t D8 = 15;
 static const uint8_t D9   = 3;
 static const uint8_t D10  = 1;
 
-#define LED1 2 // LED_BUILTIN
+// #define LED1 2 // LED_BUILTIN
 #define LED2 D0
