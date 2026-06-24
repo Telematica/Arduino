@@ -25,18 +25,19 @@
 #include <WiFiClientSecure.h>
 #include <Wire.h>
 
-#define ALTERNATIVE_I2C_SCL D5 // GPIO14 D5
-#define ALTERNATIVE_I2C_SDA D6 // GPIO12 D6
-#define BUTTON_PIN D7          // GPIO13 D7
-#define BUZZER_PIN D2          // GPIO4  D2
-#define DHTPIN D1              // GPIO5  D1
-#define DHTTYPE DHT11          // DHT 11 sensor type
-#define LED1 LED_BUILTIN       // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
-#define LED2 D0                // Board LED: Connected to GPIO16 (labeled D0 on the board).
-#define OLED_RESET -1          // Reset pin # (or -1 if sharing Arduino reset pin)
-#define REQUEST_INTERVAL 60000 // Telegram Request fired every 60s
-#define SCREEN_HEIGHT 64       // OLED display height, in pixels
-#define SCREEN_WIDTH 128       // OLED display width, in pixels
+#define ALTERNATIVE_I2C_SCL D5       // GPIO14 D5
+#define ALTERNATIVE_I2C_SDA D6       // GPIO12 D6
+#define BUTTON_PIN D7                // GPIO13 D7
+#define BUZZER_PIN D2                // GPIO4  D2
+#define DHTPIN D1                    // GPIO5  D1
+#define DHTTYPE DHT11                // DHT 11 sensor type
+#define LED1 LED_BUILTIN             // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
+#define LED2 D0                      // Board LED: Connected to GPIO16 (labeled D0 on the board).
+#define OLED_RESET -1                // Reset pin # (or -1 if sharing Arduino reset pin)
+#define REQUEST_INTERVAL 60000       // Telegram Request fired every 60s
+#define CHANGE_SCREEN_INTERVAL 10000 // Change screen every 10s
+#define SCREEN_HEIGHT 64             // OLED display height, in pixels
+#define SCREEN_WIDTH 128             // OLED display width, in pixels
 
 ADC_MODE(ADC_VCC); // Place this at the very top of your sketch (outside of setup)
 
@@ -66,6 +67,7 @@ static const unsigned int INTERVAL_2000MS = 2000;
 unsigned long previousMillis1 = 0;
 unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
+unsigned long previousMillis4 = 0;
 
 // Counters
 volatile unsigned int currentScreen = 0; // 0: Time, 1: Temp/Humidity, 2: IP Address, 3: SSID/RSSI
@@ -347,7 +349,8 @@ void nokiaRingtone()
 
   for (int i = 0; i < 13; i++)
   {
-    if (!alarmOn) {
+    if (!alarmOn)
+    {
       return;
     }
     tone(BUZZER_PIN, nokiaRingtone[i], noteDurations[i]);
@@ -358,7 +361,7 @@ void nokiaRingtone()
   }
 }
 
-void playAlarm(unsigned long currentMillis)
+void playAlarm(void)
 {
   // timeStr Format: "YYYY-MM-DD HH:MM:SS"
   String currentMinute = timeStr.substring(14, 16);
@@ -366,16 +369,17 @@ void playAlarm(unsigned long currentMillis)
   Serial.println("currentMinute: " + String(currentMinute));
   Serial.println("currentHour: " + String(currentHour));
   if (
-    alarmOn &&
-    (currentMinute == "00" && currentHour == "07") ||
-    (currentMinute == "00" && currentHour == "08"))
+      alarmOn &&
+          (currentMinute == "00" && currentHour == "07") ||
+      (currentMinute == "00" && currentHour == "08"))
   {
     Serial.println("Playing alarm...");
     nokiaRingtone();
-  } else if(
-    !((currentMinute == "00" && currentHour == "07") ||
-    (currentMinute == "00" && currentHour == "08"))
-  ) {
+  }
+  else if (
+      !((currentMinute == "00" && currentHour == "07") ||
+        (currentMinute == "00" && currentHour == "08")))
+  {
     alarmOn = true;
   }
   delay(20);
@@ -647,8 +651,19 @@ void drawScreen_5(void)
 }
 
 // Switch between screens
-void showScreen()
+void showScreen(unsigned long currentMillis)
 {
+
+  if (currentMillis - previousMillis4 >= CHANGE_SCREEN_INTERVAL)
+  {
+    previousMillis4 = currentMillis;
+    ++currentScreen;
+    if (currentScreen > 4)
+    {
+      currentScreen = 0;
+    }
+  }
+
   switch (currentScreen)
   {
   case 0:
@@ -694,6 +709,21 @@ void ICACHE_RAM_ATTR handleInterrupt()
     {
       currentScreen = 0;
     }
+  }
+}
+
+void attachDetachInterrupt()
+{
+  if (eventTriggered)
+  {
+    // Disable interrupt briefly while processing
+    detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
+
+    Serial.println("Interrupt Occurred!");
+
+    // Reset flag and re-enable interrupt
+    eventTriggered = false;
+    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleInterrupt, FALLING);
   }
 }
 
@@ -749,19 +779,9 @@ void setup()
 void loop()
 {
   unsigned long currentMillis = millis();
-  // readButton();
+  attachDetachInterrupt();
   blink(currentMillis);
-  showScreen();
-  playAlarm(currentMillis);
+  playAlarm();
+  showScreen(currentMillis);
   telegramRequest(currentMillis);
-  if (eventTriggered) {
-    // Disable interrupt briefly while processing
-    detachInterrupt(digitalPinToInterrupt(BUTTON_PIN)); 
-    
-    Serial.println("Interrupt Occurred!");
-    
-    // Reset flag and re-enable interrupt
-    eventTriggered = false;
-    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleInterrupt, FALLING);
-  }
 }
