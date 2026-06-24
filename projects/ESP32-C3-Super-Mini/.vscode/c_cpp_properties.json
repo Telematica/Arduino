@@ -25,14 +25,14 @@
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/hardware/esp32/3.3.10/libraries/HTTPClient/src",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/hardware/esp32/3.3.10/libraries/Network/src",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/hardware/esp32/3.3.10/libraries/NetworkClientSecure/src",
+                "/Users/dealersocket/Documents/Arduino/libraries/Shared/src",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/hardware/esp32/3.3.10/libraries/WiFi/src",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/riscv32-esp-elf/include/c++/14.2.0",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/riscv32-esp-elf/include/c++/14.2.0/riscv32-esp-elf",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/riscv32-esp-elf/include/c++/14.2.0/backward",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/lib/gcc/riscv32-esp-elf/14.2.0/include",
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/lib/gcc/riscv32-esp-elf/14.2.0/include-fixed",
-                "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/riscv32-esp-elf/include",
-                "/Users/dealersocket/Arduino/libraries/Shared"
+                "/Users/dealersocket/Library/Arduino15/packages/esp32/tools/esp-rv32/2601/riscv32-esp-elf/include"
             ],
             "forcedInclude": [
                 "/Users/dealersocket/Library/Arduino15/packages/esp32/hardware/esp32/3.3.10/cores/esp32/Arduino.h"

@@ -12,6 +12,7 @@
 #include <esp_system.h>
 #include <HTTPClient.h>
 #include "NTP.h"
+#include <PinsESP32C3SuperMini.h>
 #include "src/secrets/Secrets.h"
 #include <SPI.h>
 #include <time.h>
@@ -19,13 +20,12 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
-#include <PinsESP32C3SuperMini.h>
 // /Users/dealersocket/Arduino/libraries/Shared/PinsESP32C3SuperMini.h
 
 // #define ARDUINO_USB_CDC_ON_BOOT 1
 // #define ARDUINO_USB_MODE 1
-#define I2C_SDA GPIO5    // GPIO5 / SDA (Data)
-#define I2C_SCL GPIO6    // GPIO5 / SCL / SCK (Clock)
+#define I2C_SDA GPIO4    // GPIO4 / SDA (Data)
+#define I2C_SCL GPIO5    // GPIO5 / SCL / SCK (Clock)
 #define LED LED_BUILTIN  // GPI08 BLUE_LED
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -426,7 +426,7 @@ void setup()
   Serial.println("Disabling BLE...");
   BLEDevice::deinit(true);
 
-  // delay(2000); // Give the chip 2 seconds to start instead of waiting for USB
+  delay(2000); // Give the chip 2 seconds to start instead of waiting for USB
 
   // Set I2C clock speed to 400kHz (Fast Mode) pr 100kHz (Standard Mode)
   Wire.setClock(100000);
