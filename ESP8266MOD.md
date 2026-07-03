@@ -96,5 +96,6 @@
 * [Espalexa allows you to easily control your ESP with the Alexa voice assistant.](https://github.com/Aircoookie/Espalexa)
 * [Core Hardware Specifications](https://www.make-it.ca/nodemcu-details-specifications/)
 * [Manual (PDF)](https://handsontec.com/dataspecs/module/esp8266-V13.pdf)
+* [ESP8266 Interrupts](https://arduino-esp8266.readthedocs.io/en/3.0.0/reference.html)
 * [](https://store-usa.arduino.cc/products/nodemcu-esp8266)
 * [](https://mischianti.org/nodemcu-v3-high-resolution-pinout-and-specs/)

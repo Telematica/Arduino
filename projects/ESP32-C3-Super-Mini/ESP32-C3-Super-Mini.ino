@@ -235,12 +235,12 @@ void drawScreen_1(void)
   display.setTextSize(2);
   display.setTextWrap(false);
   display.setCursor(1, 1);
-  display.print(timeStr.substring(0, 10));
+  display.print(timeStr.equals("(Error)") ? timeStr : timeStr.substring(0, 10));
   // clock_quarters
   display.drawBitmap(113, 16, image_clock_quarters_bits, 15, 16, 1);
   // string 4
   display.setCursor(1, 17);
-  display.print(timeStr.substring(11, 19));
+  display.print(timeStr.equals("(Error)") ? timeStr : timeStr.substring(11, 19));
   display.display();
 }
 
