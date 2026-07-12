@@ -1,7 +1,7 @@
 /*!
  * @file TelegramHeartbeat.ino
  * @author @Telematica
- * @brief A simple IoT device that monitors temperature and humidity, displays the data on an OLED screen, and sends periodic updates to a Telegram bot.
+ * @brief A simple IoT device that monitors temperature and humidity, plays alarms, displays the data on an OLED screen, and sends periodic updates to a Telegram bot.
  *
  * Using ESP8266MOD NodeMCU Hardware, WiFi library for WiFi connectivity and HTTP requests,
  * Adafruit_SSD1306 for OLED display, DHT for temperature and humidity sensor,
@@ -17,6 +17,7 @@
 #include <ESP8266Ping.h>
 #include <ESP8266WiFi.h>
 #include <IconsAndImages.h>
+#include <map>
 #include <NTP.h>
 #include <PinsESP8266MODv3.h>
 #include <pitches.h>
@@ -28,19 +29,20 @@
 #include <WiFiClientSecure.h>
 #include <Wire.h>
 
-#define ALTERNATIVE_I2C_SCL D5       // GPIO14 D5
-#define ALTERNATIVE_I2C_SDA D6       // GPIO12 D6
-#define BUTTON_PIN D7                // GPIO13 D7
-#define BUZZER_PIN D2                // GPIO4  D2
-#define DHTPIN D1                    // GPIO5  D1
-#define DHTTYPE DHT11                // DHT 11 sensor type
-#define LED1 LED_BUILTIN             // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
-#define LED2 D0                      // Board LED: Connected to GPIO16 (labeled D0 on the board).
-#define OLED_RESET -1                // Reset pin # (or -1 if sharing Arduino reset pin)
-#define REQUEST_INTERVAL 60000       // Telegram Request fired every 60s
-#define CHANGE_SCREEN_INTERVAL 10000 // Change screen every 10s
-#define SCREEN_HEIGHT 64             // OLED display height, in pixels
-#define SCREEN_WIDTH 128             // OLED display width, in pixels
+#define ALTERNATIVE_I2C_SCL D5           // GPIO14 D5
+#define ALTERNATIVE_I2C_SDA D6           // GPIO12 D6
+#define BUTTON_PIN D7                    // GPIO13 D7
+#define BUZZER_PIN D2                    // GPIO4  D2
+#define DHTPIN D1                        // GPIO5  D1
+#define DHTTYPE DHT11                    // DHT 11 sensor type
+#define LED1 LED_BUILTIN                 // Module LED (Blue): Connected to GPIO2 (labeled D4 on the board).
+#define LED2 D0                          // Board LED: Connected to GPIO16 (labeled D0 on the board).
+#define OLED_RESET -1                    // Reset pin # (or -1 if sharing Arduino reset pin)
+#define REQUEST_INTERVAL 60000           // Telegram Request fired every 60s
+#define CHANGE_SCREEN_INTERVAL 10000     // Change screen every 10s
+#define SCREEN_HEIGHT 64                 // OLED display height, in pixels
+#define SCREEN_WIDTH 128                 // OLED display width, in pixels
+#define VERIFY_CONNECTION_INTERVAL 30000 // Verify connection every 30s
 
 ADC_MODE(ADC_VCC); // Place this at the very top of your sketch (outside of setup)
 
@@ -85,8 +87,24 @@ bool lightsOff = false;
 bool enableSerialOutput = true;
 bool connected = false;
 // bool online = false;
-volatile bool alarmOn = true;
+volatile bool alarmOn = false;
 volatile bool eventTriggered = false;
+
+// Alarms map: key = "HH:MM", value = true (active) or false (inactive) (24h format)
+std::map<String, bool> alarms = {
+    {"07:00", true},
+    {"07:30", true},
+    {"08:00", true},
+    {"08:30", true},
+    {"08:44", true},
+    {"17:30", true},
+};
+
+// Ringtone notes and durations for the Nokia ringtone
+int noteDurations[] = {300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 600};
+
+// Nokia Ringtone (E5 D5 F#4 G#4 - C#5 B4 D4 E4 - B4 A4 C#4 E4 A4)
+int nokiaRingtoneNotes[] = {NOTE_E5, NOTE_D5, NOTE_FS4, NOTE_GS4, NOTE_CS5, NOTE_B4, NOTE_D4, NOTE_E4, NOTE_B4, NOTE_A4, NOTE_CS4, NOTE_E4, NOTE_A4};
 
 /**
  * FUNCTIONS
@@ -339,18 +357,13 @@ void telegramRequest(void)
 
 void nokiaRingtone()
 {
-  int noteDurations[] = {300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 600};
-
-  // Nokia Ringtone (E5 D5 F#4 G#4 - C#5 B4 D4 E4 - B4 A4 C#4 E4 A4)
-  int nokiaRingtone[] = {NOTE_E5, NOTE_D5, NOTE_FS4, NOTE_GS4, NOTE_CS5, NOTE_B4, NOTE_D4, NOTE_E4, NOTE_B4, NOTE_A4, NOTE_CS4, NOTE_E4, NOTE_A4};
-
   for (int i = 0; i < 13; i++)
   {
     if (!alarmOn)
     {
       return;
     }
-    tone(BUZZER_PIN, nokiaRingtone[i], noteDurations[i]);
+    tone(BUZZER_PIN, nokiaRingtoneNotes[i], noteDurations[i]);
 
     // Pause between notes
     delay(noteDurations[i] * 1.30);
@@ -358,35 +371,58 @@ void nokiaRingtone()
   }
 }
 
+// @todo verify the delay issue with the alarm, it takes too start playing
 void playAlarm(void)
 {
   // timeStr Format: "YYYY-MM-DD HH:MM:SS"
   String currentMinute = timeStr.substring(14, 16);
   String currentHour = timeStr.substring(11, 13);
+  auto currentAlarm = alarms.find(currentHour + ":" + currentMinute);
+
   Serial.println("currentMinute: " + String(currentMinute));
   Serial.println("currentHour: " + String(currentHour));
-  if (
-      alarmOn &&
-          (currentMinute == "00" && currentHour == "07") ||
-      (currentMinute == "00" && currentHour == "08"))
+  // Serial.println("HH:MM " + String(currentAlarm->first) + " Alarm: " + String(currentAlarm->second));
+
+  if (alarmOn)
   {
     Serial.println("Playing alarm...");
     nokiaRingtone();
   }
-  else if (
-      !((currentMinute == "00" && currentHour == "07") ||
-        (currentMinute == "00" && currentHour == "08")))
+
+  if (currentAlarm != alarms.end())
+  {
+    Serial.println("Alarm found for " + currentHour + ":" + currentMinute);
+  }
+  else
+  {
+    Serial.println("No alarm found for " + currentHour + ":" + currentMinute);
+    return;
+  }
+
+  // Disable the current Alarm if found and active, otherwise reset all other alarms to true, except the current one
+  if (currentAlarm->second == true)
   {
     alarmOn = true;
+    currentAlarm->second = false; // Reset the alarm for this time
   }
-  delay(20);
+  else
+  {
+    for (auto &alarm : alarms)
+    {
+      if (alarm.first == currentHour + ":" + currentMinute)
+      {
+        continue;
+      }
+      alarm.second = true; // Reset all other alarms to true
+    }
+  }
 }
 
 void verifyConnection(void)
 {
   connected = WiFi.status() == WL_CONNECTED;
 
-  if (firstRun || (currentMillis - previousMillis5 >= 30000))
+  if (firstRun || (currentMillis - previousMillis5 >= VERIFY_CONNECTION_INTERVAL))
   {
     previousMillis5 = currentMillis;
 
