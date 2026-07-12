@@ -11,3 +11,5 @@
 - [](https://www.instructables.com/Running-Animations-on-OLED-DISPLAY-SSD1306/)
 - [](https://sourceforge.net/projects/lcd-image-converter/files/)
 - [](https://bitbanksoftware.blogspot.com/2018/05/practical-animation-on-i2c-ssd1306.html)
+
+## Ingress Protection code : IP66 / IP67 / IP68
