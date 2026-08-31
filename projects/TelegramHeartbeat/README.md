@@ -40,5 +40,7 @@
 - [AsyncHTTPRequest_Generic Library](https://github.com/khoih-prog/AsyncHTTPRequest_Generic)
 - [Referencia de distribución de pines: ESP8266, qué pines GPIO usar](https://robots-argentina.com.ar/referencia-de-distribucion-de-pines-ESP8266-que-pines-GPIO-usar.htm)
 - [ESP8266 Ping](https://github.com/dancol90/ESP8266Ping)
+- [image2cpp](https://javl.github.io/image2cpp/)
+- [PokéAPI Sprites](https://github.com/PokeAPI/sprites)
 
 ### MOTOR FN5015LS

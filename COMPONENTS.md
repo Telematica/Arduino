@@ -1,0 +1,5 @@
+# Electronic Components
+
+- [MST 6.3A 250V](https://www.digikey.com.mx/es/products/detail/conquer/MST-6.3A-250V/16928240?gclsrc=aw.ds&gad_source=1&gad_campaignid=23620309135&gbraid=0AAAAADrbLljBJ3BcI-p3CP1MAjvP1zouC&gclid=CjwKCAjwj7HTBhBiEiwA8s35OpfJOubyeRNhEVoiA6O7h_xFb_6g0Y_88IhCveeqMZXABMKWX9bR2hoCVBkQAvD_BwE)
+- [SET T10A 250V](https://jlcpcb.com/partdetail/CHEVRON-SET_T10A250V/C2839770)
+- [Y3F SS 05HM](https://www.amazon.com.mx/5-piezas-Y3F-SS-105DM-15-4x19-6mm/dp/B0F5HYF1SZ/ref=sr_1_3?__mk_es_MX=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=3HSSL13WOVXUN&dib=eyJ2IjoiMSJ9.6JR6W-1Ir5P9uhadrxhT_0OpizPr3UC5hjCO2KQFqS4lOGUUjXO8d_YxhD8zSyhMvqQV-8CRBoEx1NqqgCg0CGhF_47DiDv8QlPAIcnMimiln8b49f_HUFUgsTUnh-r1EX5-OqPllyn0Mq57m8McLq8TjPdTLf7sFQV6YZ29QdYI6eY5zeG4yn0v4Bw9X5F36tGQWJPiaDuTZCAbHCblZkovYLHAi0Xbt-yTszBhXc_0SUK7CC_RvtP0t-d28YG4QNbrF8AGafEF4MH3c7FzoJLx2D1hrUgF7iUjrGPuwH0.8BY6ilHneOOFPNHyQdcONQo1KJPyQ-g3W1CbVHL9kcs&dib_tag=se&keywords=Y3F+SS+05HM&qid=1785438340&sprefix=y3f+ss+05hm%2Caps%2C152&sr=8-3&ufe=app_do%3Aamzn1.fos.de93fa6a-174c-4df7-be7c-5bc8e9c5a71b)
